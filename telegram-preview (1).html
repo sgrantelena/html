@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Сообщения Telegram - проверка перед GetCourse</title>
+<style>
+  :root{
+    --bg:#e9edee;
+    --panel:#ffffff;
+    --ink:#1e2a2e;
+    --ink-soft:#67757b;
+    --ink-faint:#93a1a6;
+    --line:#dde3e5;
+    --line-soft:#e8edee;
+    --field:#f5f7f7;
+    --accent:#3f8574;
+    --accent-ink:#2c6153;
+    --accent-wash:#e7f1ee;
+    --danger:#c23b32;
+    --danger-wash:#fbeae8;
+    --warn:#b5732a;
+    --radius:10px;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding:24px 20px 48px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+
+  header{margin:0 2px 20px}
+  h1{
+    font-size:21px;
+    font-weight:650;
+    letter-spacing:-0.01em;
+    margin:0 0 4px;
+    display:flex;align-items:center;gap:8px;
+  }
+  h1 .leaf{font-size:18px}
+  header p{margin:0;color:var(--ink-soft);font-size:14px;max-width:60ch}
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+    align-items:start;
+  }
+  @media (max-width:820px){ .grid{grid-template-columns:1fr} }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+  }
+  .panel-label{
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin:0 2px 9px;
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+
+  /* toolbar */
+  .toolbar{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px;align-items:center}
+  .toolbar button{
+    font-family:var(--sans);
+    min-width:32px;height:32px;padding:0 8px;
+    border:1px solid var(--line);
+    background:var(--field);
+    color:var(--ink);
+    border-radius:8px;
+    font-size:14px;cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;
+    transition:background .12s,border-color .12s;
+  }
+  .toolbar button:hover{background:var(--accent-wash);border-color:var(--accent)}
+  .toolbar button:active{transform:translateY(1px)}
+  .toolbar button:disabled{opacity:.38;cursor:default}
+  .toolbar button:disabled:hover{background:var(--field);border-color:var(--line)}
+  .tb-b{font-weight:700}
+  .tb-i{font-style:italic}
+  .tb-u{text-decoration:underline}
+  .tb-s{text-decoration:line-through}
+  .tb-code{font-family:var(--mono);font-size:12px}
+  .tb-hist{font-size:16px}
+  .tb-sep{width:1px;height:22px;background:var(--line);margin:0 3px}
+
+  textarea{
+    width:100%;
+    min-height:280px;
+    resize:vertical;
+    font-family:var(--mono);
+    font-size:13px;
+    line-height:1.55;
+    color:var(--ink);
+    background:var(--field);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:12px;
+    outline:none;
+  }
+  textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-wash)}
+
+  /* meters */
+  .meters{margin-top:11px;display:flex;flex-direction:column;gap:8px}
+  .meter-row{display:flex;align-items:center;gap:10px;font-size:13px;flex-wrap:wrap}
+  .meter-main{font-weight:600}
+  .meter-main.over{color:var(--danger)}
+  .over-tag{color:var(--danger);font-weight:600}
+  .meter-sub{color:var(--ink-faint);font-size:12.5px}
+  .limitbox{display:flex;align-items:center;gap:5px;margin-left:auto;color:var(--ink-faint);font-size:12px}
+  .limitbox input{
+    width:58px;font-family:var(--mono);font-size:12px;text-align:right;
+    border:1px solid var(--line);border-radius:6px;padding:3px 6px;background:var(--field);color:var(--ink);
+  }
+  .bar{height:5px;border-radius:99px;background:var(--line-soft);overflow:hidden}
+  .bar > i{display:block;height:100%;width:0;background:var(--accent);transition:width .12s,background .12s}
+  .bar > i.over{background:var(--danger)}
+
+  /* validation */
+  .checks{margin-top:11px;font-size:13px}
+  .checks .ok{color:var(--accent-ink);display:flex;align-items:center;gap:7px}
+  .checks ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+  .checks li{
+    display:flex;gap:8px;align-items:flex-start;
+    background:var(--danger-wash);border:1px solid #f0d3cf;
+    border-radius:8px;padding:7px 9px;color:#8a2f28;
+  }
+  .checks li.warnrow{background:#fbf3e6;border-color:#eeddc0;color:#7a541f}
+  .checks li code{font-family:var(--mono);font-size:12px;background:rgba(0,0,0,.06);padding:1px 4px;border-radius:4px}
+  .dot{flex:0 0 auto;width:7px;height:7px;border-radius:99px;margin-top:6px;background:currentColor;opacity:.7}
+
+  .actions{margin-top:13px;display:flex;gap:8px;flex-wrap:wrap}
+  .actions button{
+    font-family:var(--sans);font-size:13px;font-weight:550;
+    padding:8px 13px;border-radius:8px;cursor:pointer;border:1px solid var(--line);
+    background:var(--field);color:var(--ink);transition:background .12s,border-color .12s;
+  }
+  .actions button:hover{background:#eef1f1}
+  .actions .primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .actions .primary:hover{background:var(--accent-ink)}
+  .actions .linky{background:transparent;border-color:transparent;color:var(--accent-ink);padding-left:4px}
+  .actions .linky:hover{background:transparent;text-decoration:underline}
+  .copied{color:var(--accent-ink);font-size:12.5px;align-self:center;opacity:0;transition:opacity .15s}
+  .copied.show{opacity:1}
+
+  /* preview */
+  .prev-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 2px 9px}
+  .theme-toggle{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .theme-toggle button{
+    font-family:var(--sans);border:0;background:var(--field);color:var(--ink-soft);
+    font-size:12px;padding:5px 11px;cursor:pointer;
+  }
+  .theme-toggle button.on{background:var(--accent);color:#fff}
+
+  .chat{
+    border-radius:var(--radius);
+    padding:20px 16px;
+    min-height:280px;
+    background:#cdd8e6;
+  }
+  .chat.dark{background:#0e1621}
+  .bubble{
+    max-width:88%;
+    background:#fff;color:#0b0f12;
+    border-radius:12px;border-top-left-radius:4px;
+    padding:9px 12px 7px;
+    font-size:15px;line-height:1.45;
+    box-shadow:0 1px 1px rgba(0,0,0,.12);
+    word-wrap:break-word;overflow-wrap:break-word;white-space:normal;
+  }
+  .chat.dark .bubble{background:#1c2b39;color:#e8eef4;box-shadow:none}
+  .bubble .name{font-size:13px;font-weight:600;color:#3f8574;margin-bottom:2px}
+  .chat.dark .bubble .name{color:#7ec8b5}
+  .bubble .empty{color:#9aa6ad;font-style:normal}
+  .bubble .time{float:right;font-size:11px;color:#93a1a6;margin:6px 0 -2px 10px}
+  .chat.dark .bubble .time{color:#5f7180}
+
+  /* telegram tags inside bubble */
+  .bubble blockquote{
+    margin:5px 0;padding:3px 0 3px 11px;
+    border-left:3px solid #3f8574;
+    color:inherit;
+  }
+  .chat.dark .bubble blockquote{border-left-color:#7ec8b5}
+  .bubble code{
+    font-family:var(--mono);font-size:13px;
+    background:rgba(0,0,0,.06);padding:1px 4px;border-radius:4px;
+  }
+  .chat.dark .bubble code{background:rgba(255,255,255,.1)}
+  .bubble a.tg-link{color:#3390ec;text-decoration:none}
+  .chat.dark .bubble a.tg-link{color:#6ab3f3}
+  .bubble .tg-spoiler-box{
+    background:#b8c2c8;color:transparent;border-radius:3px;cursor:pointer;
+    transition:color .12s,background .12s;
+  }
+  .chat.dark .bubble .tg-spoiler-box{background:#3a4a58}
+  .bubble .tg-spoiler-box.revealed{background:transparent;color:inherit}
+  .bubble .var{
+    background:var(--accent-wash);color:var(--accent-ink);
+    border-radius:3px;padding:0 2px;
+  }
+  .chat.dark .bubble .var{background:rgba(126,200,181,.18);color:#9fe0cf}
+
+  .hint{margin:16px 2px 0;color:var(--ink-faint);font-size:12.5px;max-width:74ch}
+  .hint b{color:var(--ink-soft);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="leaf">🌿</span>Сообщения Telegram</h1>
+    <p>Собери текст с разметкой, проверь, как он будет выглядеть в Telegram, и убедись, что теги закрыты и лимит не превышен - до того, как вставлять во вкладку HTML в GetCourse.</p>
+  </header>
+
+  <div class="grid">
+    <!-- LEFT: editor -->
+    <section class="panel">
+      <div class="panel-label"><span>Код - вставь сюда текст из вкладки HTML</span></div>
+
+      <div class="toolbar" id="toolbar">
+        <button type="button" id="undoBtn" class="tb-hist" title="Отменить (Ctrl+Z)">↶</button>
+        <button type="button" id="redoBtn" class="tb-hist" title="Повторить (Ctrl+Y)">↷</button>
+        <span class="tb-sep"></span>
+        <button type="button" class="tb-b" data-open="&lt;b&gt;" data-close="&lt;/b&gt;" title="Жирный">Ж</button>
+        <button type="button" class="tb-i" data-open="&lt;i&gt;" data-close="&lt;/i&gt;" title="Курсив">К</button>
+        <button type="button" class="tb-u" data-open="&lt;u&gt;" data-close="&lt;/u&gt;" title="Подчеркнутый">Ч</button>
+        <button type="button" class="tb-s" data-open="&lt;s&gt;" data-close="&lt;/s&gt;" title="Зачеркнутый">З</button>
+        <span class="tb-sep"></span>
+        <button type="button" data-open="&lt;blockquote&gt;" data-close="&lt;/blockquote&gt;" title="Цитата">❝ ❞</button>
+        <button type="button" class="tb-code" data-open="&lt;code&gt;" data-close="&lt;/code&gt;" title="Моноширинный">&lt;/&gt;</button>
+        <button type="button" data-open='&lt;span class="tg-spoiler"&gt;' data-close="&lt;/span&gt;" title="Спойлер - скрытый текст">Спойлер</button>
+        <button type="button" data-open='&lt;a href="https://"&gt;' data-close="&lt;/a&gt;" title="Ссылка">Ссылка</button>
+      </div>
+
+      <textarea id="src" spellcheck="false" placeholder="Например:&#10;&lt;b&gt;Задание на сегодня&lt;/b&gt;&#10;Текст сообщения..."></textarea>
+
+      <div class="meters">
+        <div class="bar"><i id="bar"></i></div>
+        <div class="meter-row">
+          <span class="meter-main" id="count">0</span>
+          <span class="over-tag" id="over"></span>
+          <span class="meter-sub" id="visible"></span>
+          <span class="limitbox">лимит <input id="limit" type="number" min="1" value="1000"></span>
+        </div>
+      </div>
+
+      <div class="checks" id="checks"></div>
+
+      <div class="actions">
+        <button type="button" class="primary" id="copy">Копировать код</button>
+        <button type="button" id="clear">Очистить</button>
+        <button type="button" class="linky" id="sample">Загрузить пример</button>
+        <span class="copied" id="copied">Скопировано</span>
+      </div>
+    </section>
+
+    <!-- RIGHT: preview -->
+    <section class="panel">
+      <div class="prev-head">
+        <div class="panel-label" style="margin:0">Как увидит пользователь</div>
+        <div class="theme-toggle" id="theme">
+          <button type="button" data-theme="light" class="on">Светлая</button>
+          <button type="button" data-theme="dark">Темная</button>
+        </div>
+      </div>
+      <div class="chat" id="chat">
+        <div class="bubble">
+          <div class="name">Центр медитации Тергар Россия</div>
+          <div id="preview"><span class="empty">Здесь появится предпросмотр</span></div>
+          <span class="time">10:00</span>
+        </div>
+      </div>
+      <p class="hint"><b>Кнопки-переключатели:</b> выдели текст и нажми кнопку - разметка применится; нажми еще раз на том же выделении - снимется. <b>Ctrl+Z</b> - отменить, <b>Ctrl+Y</b> - вернуть.</p>
+      <p class="hint"><b>Счетчик «с тегами»</b> считает как вкладка HTML в GetCourse - вместе с тегами, лимит по умолчанию 1000. <b>«видит читатель»</b> - длина без тегов. Спойлер в превью кликается, как в Telegram.</p>
+    </section>
+  </div>
+
+  <p class="hint" style="margin-top:22px">Это упрощенная имитация - перед боевой отправкой один раз проверь итог на реальном тесте в воронке. Но черновую доводку (разметку, длину, баланс тегов) удобно делать здесь. Файл работает офлайн: сохрани его к себе и открывай когда нужно.</p>
+</div>
+
+<script>
+(function(){
+  var src = document.getElementById('src');
+  var preview = document.getElementById('preview');
+  var count = document.getElementById('count');
+  var over = document.getElementById('over');
+  var visible = document.getElementById('visible');
+  var bar = document.getElementById('bar');
+  var limitInput = document.getElementById('limit');
+  var checks = document.getElementById('checks');
+  var chat = document.getElementById('chat');
+  var undoBtn = document.getElementById('undoBtn');
+  var redoBtn = document.getElementById('redoBtn');
+
+  var ALLOWED = ['b','i','u','s','blockquote','code','a','span','br'];
+  var VOID = ['br'];
+
+  function escapeHtml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // --- render preview ---
+  function toPreview(raw){
+    var out = escapeHtml(raw);
+    ['b','i','u','s','blockquote','code'].forEach(function(t){
+      out = out.split('&lt;'+t+'&gt;').join('<'+t+'>');
+      out = out.split('&lt;/'+t+'&gt;').join('</'+t+'>');
+    });
+    out = out.split('&lt;br&gt;').join('<br>').split('&lt;br/&gt;').join('<br>');
+    out = out.split('&lt;span class="tg-spoiler"&gt;').join('<span class="tg-spoiler-box">');
+    out = out.replace(/&lt;a href="([^"]*)"&gt;/g, '<a class="tg-link" href="$1" target="_blank" rel="noopener">');
+    out = out.split('&lt;/span&gt;').join('</span>').split('&lt;/a&gt;').join('</a>');
+    out = out.replace(/\n/g,'<br>');
+    out = out.replace(/\{[a-zA-Z0-9_.|]+\}/g, function(m){ return '<span class="var">'+m+'</span>'; });
+    return out;
+  }
+
+  // --- validate tag balance ---
+  function validate(raw){
+    var msgs = [];
+    var re = /<(\/?)([a-zA-Z0-9]+)((?:\s[^>]*)?)>/g;
+    var stack = [];
+    var m;
+    while((m = re.exec(raw)) !== null){
+      var closing = m[1] === '/';
+      var name = m[2].toLowerCase();
+      if(ALLOWED.indexOf(name) === -1){
+        msgs.push({type:'warn', text:'Тег <code>&lt;'+name+'&gt;</code> Telegram не поддерживает - он придет как обычный текст.'});
+        continue;
+      }
+      if(VOID.indexOf(name) !== -1) continue;
+      if(!closing){
+        stack.push(name);
+      } else {
+        if(stack.length === 0){
+          msgs.push({type:'err', text:'Лишний закрывающий тег <code>&lt;/'+name+'&gt;</code> - для него нет открывающего.'});
+        } else if(stack[stack.length-1] === name){
+          stack.pop();
+        } else {
+          var idx = stack.lastIndexOf(name);
+          if(idx === -1){
+            msgs.push({type:'err', text:'Закрывающий <code>&lt;/'+name+'&gt;</code> не совпадает с открытым <code>&lt;'+stack[stack.length-1]+'&gt;</code> - теги перекрещены.'});
+          } else {
+            msgs.push({type:'err', text:'Теги идут внахлест: <code>&lt;'+stack[stack.length-1]+'&gt;</code> не закрыт перед <code>&lt;/'+name+'&gt;</code>.'});
+            stack.splice(idx,1);
+          }
+        }
+      }
+    }
+    stack.forEach(function(name){
+      msgs.push({type:'err', text:'Тег <code>&lt;'+name+'&gt;</code> не закрыт - добавь <code>&lt;/'+name+'&gt;</code>.'});
+    });
+    return msgs;
+  }
+
+  function stripTags(raw){
+    return raw.replace(/<\/?[a-zA-Z0-9]+(?:\s[^>]*)?>/g,'');
+  }
+
+  function render(){
+    var raw = src.value;
+    var limit = parseInt(limitInput.value,10) || 1000;
+    preview.innerHTML = raw ? toPreview(raw) : '<span class="empty">Здесь появится предпросмотр</span>';
+    var len = raw.length;
+    var vis = stripTags(raw).length;
+    count.textContent = 'С тегами: ' + len + ' / ' + limit;
+    visible.textContent = '· видит читатель: ' + vis;
+    var pct = Math.min(100, Math.round(len/limit*100));
+    bar.style.width = pct + '%';
+    if(len > limit){
+      count.classList.add('over'); bar.classList.add('over');
+      over.textContent = 'превышение на ' + (len - limit);
+    } else {
+      count.classList.remove('over'); bar.classList.remove('over');
+      over.textContent = '';
+    }
+    var msgs = validate(raw);
+    if(!raw){
+      checks.innerHTML = '';
+    } else if(msgs.length === 0){
+      checks.innerHTML = '<div class="ok"><span class="dot"></span>Все теги закрыты верно.</div>';
+    } else {
+      var html = '<ul>';
+      msgs.forEach(function(x){
+        html += '<li class="'+(x.type==='warn'?'warnrow':'')+'"><span class="dot"></span><span>'+x.text+'</span></li>';
+      });
+      html += '</ul>';
+      checks.innerHTML = html;
+    }
+  }
+
+  // ---------- history: undo / redo ----------
+  var undoStack = [], redoStack = [];
+  var MAX = 250;
+  var typing = false, typeTimer = null;
+
+  function snap(){ return {v: src.value, s: src.selectionStart, e: src.selectionEnd}; }
+  var preType = snap();
+
+  function updateHistBtns(){
+    undoBtn.disabled = undoStack.length === 0;
+    redoBtn.disabled = redoStack.length === 0;
+  }
+  function applyState(st){
+    src.value = st.v;
+    src.focus();
+    src.setSelectionRange(st.s, st.e);
+    render();
+    updateHistBtns();
+  }
+  function recordThenChange(mutator){
+    clearTimeout(typeTimer); typing = false;
+    undoStack.push(snap()); if(undoStack.length > MAX) undoStack.shift();
+    redoStack = [];
+    mutator();
+    src.focus();
+    preType = snap();
+    render();
+    updateHistBtns();
+  }
+  function undo(){
+    clearTimeout(typeTimer); typing = false;
+    if(!undoStack.length) return;
+    redoStack.push(snap());
+    applyState(undoStack.pop());
+    preType = snap();
+  }
+  function redo(){
+    clearTimeout(typeTimer); typing = false;
+    if(!redoStack.length) return;
+    undoStack.push(snap());
+    applyState(redoStack.pop());
+    preType = snap();
+  }
+
+  // ---------- toggle or wrap formatting ----------
+  function decode(s){ var t=document.createElement('textarea'); t.innerHTML=s; return t.value; }
+
+  function toggleOrWrap(open, close){
+    var tag = (open.match(/^<\s*([a-zA-Z0-9]+)/) || [])[1] || '';
+    var s = src.selectionStart, e = src.selectionEnd, val = src.value;
+    var sel = val.slice(s, e);
+
+    var openStart = new RegExp('^<' + tag + '(?:\\s[^>]*)?>');
+    var openEnd   = new RegExp('<' + tag + '(?:\\s[^>]*)?>$');
+    var closeStartRe = new RegExp('^</' + tag + '>');
+    var closeEndRe   = new RegExp('</' + tag + '>$');
+
+    // Case B: the selection itself begins and ends with this tag -> unwrap inside
+    var mOpen = sel.match(openStart);
+    if(mOpen){
+      var rest = sel.slice(mOpen[0].length);
+      var mClose = rest.match(closeEndRe);
+      if(mClose){
+        var inner = rest.slice(0, rest.length - mClose[0].length);
+        recordThenChange(function(){
+          src.value = val.slice(0,s) + inner + val.slice(e);
+          src.setSelectionRange(s, s + inner.length);
+        });
+        return;
+      }
+    }
+    // Case A: the tags sit just outside the selection -> remove them
+    if(openEnd.test(val.slice(0,s)) && closeStartRe.test(val.slice(e))){
+      var openLen = val.slice(0,s).match(openEnd)[0].length;
+      var closeLen = val.slice(e).match(closeStartRe)[0].length;
+      recordThenChange(function(){
+        src.value = val.slice(0, s-openLen) + sel + val.slice(e+closeLen);
+        src.setSelectionRange(s-openLen, e-openLen);
+      });
+      return;
+    }
+    // Otherwise: apply
+    recordThenChange(function(){
+      src.value = val.slice(0,s) + open + sel + close + val.slice(e);
+      if(sel){ src.setSelectionRange(s+open.length, s+open.length+sel.length); }
+      else { var c=s+open.length; src.setSelectionRange(c,c); }
+    });
+  }
+
+  document.getElementById('toolbar').addEventListener('click', function(e){
+    var btn = e.target.closest('button');
+    if(!btn || !btn.hasAttribute('data-open')) return;
+    toggleOrWrap(decode(btn.getAttribute('data-open')), decode(btn.getAttribute('data-close')));
+  });
+
+  undoBtn.addEventListener('click', function(){ undo(); });
+  redoBtn.addEventListener('click', function(){ redo(); });
+
+  // ---------- theme toggle ----------
+  document.getElementById('theme').addEventListener('click', function(e){
+    var btn = e.target.closest('button'); if(!btn) return;
+    this.querySelectorAll('button').forEach(function(b){ b.classList.remove('on'); });
+    btn.classList.add('on');
+    chat.classList.toggle('dark', btn.getAttribute('data-theme') === 'dark');
+  });
+
+  // ---------- spoiler reveal in preview ----------
+  preview.addEventListener('click', function(e){
+    var box = e.target.closest('.tg-spoiler-box');
+    if(box) box.classList.toggle('revealed');
+  });
+
+  // ---------- actions ----------
+  document.getElementById('copy').addEventListener('click', function(){
+    var done = document.getElementById('copied');
+    function flash(){ done.classList.add('show'); setTimeout(function(){done.classList.remove('show');},1400); }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(src.value).then(flash, function(){ src.select(); document.execCommand('copy'); flash(); });
+    } else { src.select(); document.execCommand('copy'); flash(); }
+  });
+  document.getElementById('clear').addEventListener('click', function(){
+    recordThenChange(function(){ src.value=''; src.setSelectionRange(0,0); });
+  });
+  document.getElementById('sample').addEventListener('click', function(){
+    recordThenChange(function(){
+      src.value = '<b>Задание на сегодня</b>\n\nМингьюр Ринпоче предлагает выполнять это простое упражнение в течение дня.\n\n<blockquote>Каждый раз, когда замечаешь тревогу или напряжение, сделай <b>три медленных осознанных вдоха и выдоха</b>.\n\nНе пытайся изменить свое состояние. Просто побудь с этими тремя вдохами.</blockquote>\n\n<i>После этой паузы просто понаблюдай: изменилось ли что-то?</i>';
+      src.setSelectionRange(src.value.length, src.value.length);
+    });
+  });
+
+  // ---------- typing history (Ctrl+Z for manual edits) ----------
+  src.addEventListener('input', function(){
+    if(!typing){
+      undoStack.push(preType); if(undoStack.length > MAX) undoStack.shift();
+      redoStack = [];
+      typing = true;
+    }
+    clearTimeout(typeTimer);
+    typeTimer = setTimeout(function(){
+      typing = false;
+      preType = snap();
+      updateHistBtns();
+    }, 500);
+    render();
+    updateHistBtns();
+  });
+
+  // ---------- keyboard: Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z (layout-independent) ----------
+  document.addEventListener('keydown', function(e){
+    var meta = e.ctrlKey || e.metaKey;
+    if(!meta) return;
+    if(e.code === 'KeyZ' && !e.shiftKey){ e.preventDefault(); undo(); }
+    else if((e.code === 'KeyZ' && e.shiftKey) || e.code === 'KeyY'){ e.preventDefault(); redo(); }
+  });
+
+  limitInput.addEventListener('input', render);
+
+  render();
+  updateHistBtns();
+})();
+</script>
+</body>
+</html>
